@@ -1,0 +1,9 @@
+dependencies {
+	compileOnly group: "com.liferay.portal", name: "release.portal.api"
+
+	compile group: "com.liferay", name: "com.liferay.portal.security.password.encryptor.impl", version: "1.0.4"
+	compile group: "com.liferay", name: "org.vps.crypt", version: "1.0"
+
+}
+
+jar.archiveName = 'com.liferay.portal.security.password.encryptor.impl.jar'

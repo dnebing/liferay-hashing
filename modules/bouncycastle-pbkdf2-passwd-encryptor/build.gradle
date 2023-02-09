@@ -1,0 +1,5 @@
+dependencies {
+	compileOnly group: "com.liferay.portal", name: "release.portal.api"
+
+	compileInclude group: 'org.bouncycastle', name: 'bcpkix-jdk18on', version: '1.72'
+}

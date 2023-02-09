@@ -1,0 +1,9 @@
+Bundle-Name: Hashing Gogo Commands
+Bundle-SymbolicName: com.liferay.gogo.command.hashing
+Bundle-Version: 1.0.0
+Export-Package: com.liferay.gogo.command.hashing
+Import-Package:\
+	org.apache.felix.service.command;resolution:=optional,\
+	\
+	*
+
