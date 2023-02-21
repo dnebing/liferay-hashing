@@ -12,7 +12,7 @@
  * details.
  */
 
-package com.liferay.portal.security.password.encryptor.internal;
+package com.liferay.portal.security.password.encryptor.internal.composite;
 
 import com.liferay.osgi.service.tracker.collections.map.ServiceTrackerMap;
 import com.liferay.osgi.service.tracker.collections.map.ServiceTrackerMapFactory;
@@ -23,21 +23,53 @@ import com.liferay.portal.kernel.exception.PwdEncryptorException;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.security.pwd.PasswordEncryptor;
-import com.liferay.portal.kernel.util.ClassUtil;
-import com.liferay.portal.kernel.util.Validator;
+import com.liferay.portal.kernel.util.*;
+import com.liferay.portal.util.PropsUtil;
 import com.liferay.portal.util.PropsValues;
-
 import org.osgi.framework.BundleContext;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Deactivate;
 
+import java.util.regex.Pattern;
+
 /**
+ * class CompositePasswordEncryptor: This is basically Liferay's implementation w/ a slight override to the
+ * _select() method that will accommodate using parameterized hashing arguments.
+ *
+ * This can replace Liferay's implementation, but you likely need to blocklist the
+ * com.liferay.portal.security.password.encryptor.internal.CompositePasswordEncryptor to prevent Liferay
+ * from binding to its own implementation, even though this one has a higher service ranking.
+ *
  * @author Michael C. Han
+ * @author dnebinger
  */
-@Component(property = "composite=true", service = PasswordEncryptor.class)
-public class CompositePasswordEncryptor
-	extends BasePasswordEncryptor implements PasswordEncryptor {
+@Component(
+		immediate = true,
+		property =  {
+				"composite=true",
+				"service.ranking:Integer=100"
+		},
+		service = PasswordEncryptor.class)
+public class CompositePasswordEncryptor implements PasswordEncryptor {
+
+	@Override
+	public String encrypt(String plainTextPassword, String encryptedPassword)
+			throws PwdEncryptorException {
+
+		return encrypt(
+				getDefaultPasswordEncryptionAlgorithm(), plainTextPassword,
+				encryptedPassword);
+	}
+
+	@Override
+	public String encrypt(
+			String algorithm, String plainTextPassword,
+			String encryptedPassword)
+			throws PwdEncryptorException {
+
+		return encrypt(algorithm, plainTextPassword, encryptedPassword, false);
+	}
 
 	@Override
 	public String encrypt(
@@ -109,6 +141,16 @@ public class CompositePasswordEncryptor
 			StringPool.OPEN_CURLY_BRACE, _getAlgorithmName(algorithm),
 			StringPool.CLOSE_CURLY_BRACE, newEncryptedPassword);
 	}
+
+	@Override
+	public String getDefaultPasswordEncryptionAlgorithm() {
+		return _PASSWORDS_ENCRYPTION_ALGORITHM;
+	}
+
+	private static final String _PASSWORDS_ENCRYPTION_ALGORITHM =
+			StringUtil.toUpperCase(
+					GetterUtil.getString(
+							PropsUtil.get(PropsKeys.PASSWORDS_ENCRYPTION_ALGORITHM)));
 
 	@Activate
 	protected void activate(BundleContext bundleContext) {
@@ -196,10 +238,12 @@ public class CompositePasswordEncryptor
 		else if (algorithm.startsWith(TYPE_PBKDF2)) {
 			passwordEncryptor = _serviceTrackerMap.getService(TYPE_PBKDF2);
 		}
+		// DHN - Begin the override
 		else if (algorithm.indexOf(CharPool.SLASH) > 0) {
 			passwordEncryptor = _serviceTrackerMap.getService(
 				algorithm.substring(0, algorithm.indexOf(CharPool.SLASH)));
 		}
+		// DHN - End the override
 		else {
 			passwordEncryptor = _serviceTrackerMap.getService(algorithm);
 		}
